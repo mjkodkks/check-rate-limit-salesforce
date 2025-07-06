@@ -1,5 +1,5 @@
 {
-  "name": "check-salesforce-api",
+  "name": "check-rate-limit-salesforce",
   "module": "index.ts",
   "type": "module",
   "private": true,

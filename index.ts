@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { cron, Patterns } from '@elysiajs/cron'
 import type { Limit, SalesforceLimits } from './types';
 import { Database } from 'bun:sqlite';
+import { createDB } from './db/createDB';
 const DB_PATH = Bun.env.DB_FILE_PATH || './db.sqlite';
 const SALESFORCE_INSTANCE_URL = Bun.env.SALESFORCE_INSTANCE_URL;
 const ACCESS_TOKEN = Bun.env.ACCESS_TOKEN;
@@ -11,8 +12,7 @@ if (!SALESFORCE_INSTANCE_URL || !ACCESS_TOKEN) {
     process.exit(1); 
 }
 
-const db = new Database(DB_PATH);
-    console.log(`Database opened successfully at: ${DB_PATH}`);
+const { db } = createDB();
 
 const insertStmt = db.prepare(`
     INSERT INTO rate_limits (timestamp, limit_name, maximum, remaining, in_use, in_use_percent)
@@ -77,7 +77,7 @@ const app = new Elysia()
     .use(
         cron({
             name: 'fetch.salesforce.limits',
-            pattern: Patterns.EVERY_MINUTE,
+            pattern: Patterns.EVERY_30_MINUTES,
             async run() {
                 console.log('Cron job triggered: Fetching Salesforce limits...');
                 await fetchSalesforceLimits();
@@ -110,6 +110,12 @@ const app = new Elysia()
             set.status = 500;``
         }
         return result;
+    })
+
+    .get('/health', () => {
+        const latestData = db.query("SELECT id, timestamp, limit_name FROM rate_limits ORDER BY timestamp DESC LIMIT 1").get(); // Check DB connection
+        console.log("Health check: Database connection is active.");
+        return { status: 'ok', timestamp: new Date().toISOString(), latestData };
     })
     .listen(3000);
 

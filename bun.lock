@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "check-salesforce-api",
+      "name": "check-rate-limit-salesforce",
       "dependencies": {
         "@elysiajs/cron": "^1.3.0",
         "elysia": "^1.3.5",
