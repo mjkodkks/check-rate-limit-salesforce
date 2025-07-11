@@ -1,4 +1,4 @@
-FROM oven/bun:1.2.18-arm64-debian
+FROM oven/bun:1.2.18-slim
 
 # Set working directory
 WORKDIR /app
