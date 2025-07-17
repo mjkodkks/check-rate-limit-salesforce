@@ -6,16 +6,25 @@
   "scripts": {
     "start": "bun run index.ts",
     "dev": "bun run index.ts",
+    "dz:generate": "drizzle-kit generate",
+    "dz:migrate": "drizzle-kit migrate",
+    "dz:push": "drizzle-kit push",
     "build": "bun build index.ts --outdir=dist --target=node20"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.4",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.20.3"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@elysiajs/cron": "^1.3.0",
-    "elysia": "^1.3.5"
+    "dotenv": "^17.2.0",
+    "drizzle-orm": "^0.44.3",
+    "elysia": "^1.3.5",
+    "pg": "^8.16.3"
   }
 }

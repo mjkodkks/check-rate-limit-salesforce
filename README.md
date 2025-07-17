@@ -55,6 +55,7 @@ bun run index.ts
 - `GET /data` — Get the latest Salesforce limits data from the database.
 - `GET /fetch-now` — Manually trigger a fetch from Salesforce and save to the database.
 - `GET /health` — Health check endpoint.
+- `GET /download-csv` - Manually Download all of record to .csv file
 
 ---
 

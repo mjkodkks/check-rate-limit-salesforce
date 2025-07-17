@@ -1,0 +1,16 @@
+# File: docker-compose.yml
+version: '3.8'
+services:
+  check-salesforce-api-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+
+    command: bun run start
+    restart: unless-stopped

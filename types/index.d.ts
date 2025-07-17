@@ -77,3 +77,16 @@ export type SalesforceLimits = {
   SingleEmail: Limit;
   StreamingApiConcurrentClients: Limit;
 };
+
+/**
+ * Represents the structure of the rate limits table in the database.
+ */
+export interface RateLimit {
+  id: number; // Primary key
+  timestamp: Date; // ISO string format for timestamps
+  limitName: string; // Name of the limit
+  maximum: number; // Maximum value of the limit
+  remaining: number; // Remaining value of the limit
+  inUse: number; // Number of used resources
+  inUsePercent: number; // Percentage of the limit that is currently in use
+};
