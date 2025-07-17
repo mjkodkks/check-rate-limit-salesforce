@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { cron, Patterns } from '@elysiajs/cron'
 import type { Limit, SalesforceLimits } from './types';
-import { Database } from 'bun:sqlite';
 import { createDB } from './db/createDB';
 const DB_PATH = Bun.env.DB_FILE_PATH || './db.sqlite';
 const SALESFORCE_INSTANCE_URL = Bun.env.SALESFORCE_INSTANCE_URL;
@@ -10,6 +9,18 @@ const ACCESS_TOKEN = Bun.env.ACCESS_TOKEN;
 if (!SALESFORCE_INSTANCE_URL || !ACCESS_TOKEN) {
     console.error("Please provide SALESFORCE_INSTANCE_URL and ACCESS_TOKEN in your .env file.");
     process.exit(1); 
+}
+
+const MAXIMUM_RETRIES = 2; // Maximum number of retries for the cron job
+let retry = 0; // Current retry count
+
+function checkRetryLimit() {
+    console.log(`Current retry count: ${retry}`);
+    if (retry >= MAXIMUM_RETRIES) {
+        console.error(`Maximum retry limit reached (${MAXIMUM_RETRIES}). Stopping further attempts.`);
+        return true; // Stop further retries
+    }
+    return false; // Continue retrying
 }
 
 const { db } = createDB();
@@ -80,8 +91,21 @@ const app = new Elysia()
             pattern: Patterns.EVERY_30_MINUTES,
             async run() {
                 console.log('Cron job triggered: Fetching Salesforce limits...');
-                await fetchSalesforceLimits();
-            }
+                if (checkRetryLimit()) {
+                    console.error("Stopping further attempts due to retry limit.");
+                    return; // Stop further retries
+                }
+                try {
+                    const result = await fetchSalesforceLimits();
+                    retry = 0; // Reset retry count on successful fetch
+                } catch (error) {
+                    console.error('Error during cron job execution:', error);
+                    if (retry < MAXIMUM_RETRIES) {
+                        retry++;
+                        console.log(`Retrying... (${retry}/${MAXIMUM_RETRIES})`);
+                    }
+                }
+            }, // Set to true to pause the cron job
         })
     )
     .get('/data', async ({ set }) => {
@@ -99,6 +123,10 @@ const app = new Elysia()
         } catch (error) {
             console.error("Error reading data from DB:", error);
             set.status = 500;
+            if (retry < MAXIMUM_RETRIES) {
+                retry++;
+                console.log(`Retrying... (${retry}/${MAXIMUM_RETRIES})`);
+            }
             return { error: (error as Error).message };
         }
     })
@@ -116,6 +144,23 @@ const app = new Elysia()
         const latestData = db.query("SELECT id, timestamp, limit_name FROM rate_limits ORDER BY timestamp DESC LIMIT 1").get(); // Check DB connection
         console.log("Health check: Database connection is active.");
         return { status: 'ok', timestamp: new Date().toISOString(), latestData };
+    })
+
+    .get('/download-csv', ({ set, status }) => {
+        console.log("Download CSV endpoint called");
+        const stmt = db.query("SELECT * FROM rate_limits ORDER BY timestamp DESC");
+        const data = stmt.all();
+        if (data.length === 0) {
+            set.status = 404;
+            return { error: "No data available to download." };
+        }
+        const headers = Object.keys(data[0]).join(',');
+        const csvContent = [headers, ...data.map(row => Object.values(row).join(','))].join('\n');
+        set.headers['Content-Disposition'] = 'attachment; filename="rate_limits.csv"';
+        set.headers['Content-Type'] = 'text/csv';
+        console.log("CSV download initiated.");
+
+        return csvContent;
     })
     .listen(3000);
 
