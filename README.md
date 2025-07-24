@@ -50,6 +50,11 @@ bun run index.ts
      docker run --env-file .env -v $(pwd)/db.sqlite:/app/db.sqlite -p 3000:3000 check-rate-limit-salesforce
      ```
 
+3. **Docker compose
+```bash
+docker compose down && docker compose -f ./docker-compose.prod-supabase.yml build --no-cache && docker compose -f ./docker-compose.prod-supabase.yml up -d
+```
+
 ## Endpoints
 
 - `GET /data` — Get the latest Salesforce limits data from the database.
