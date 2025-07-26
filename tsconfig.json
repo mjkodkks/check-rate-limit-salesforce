@@ -5,8 +5,11 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
-    "jsx": "react-jsx",
+    "jsx": "react",
     "allowJs": true,
+    "jsxFactory": "Html.createElement",
+		"jsxFragmentFactory": "Html.Fragment",
+    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],
 
     // Bundler mode
     "moduleResolution": "bundler",

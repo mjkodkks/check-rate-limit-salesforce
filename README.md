@@ -30,7 +30,7 @@
 ## Running Locally
 
 ```bash
-bun run index.ts
+bun run index.tsx
 ```
 
 ## Running with Docker (Raspberry Pi 4, Bookworm)
