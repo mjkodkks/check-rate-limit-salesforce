@@ -6,7 +6,7 @@ import type { Limit, RateLimit, SalesforceLimits } from "./types";
 import { createDB } from "./drizzle/createDB";
 import { rateLimits } from "./drizzle/schema";
 import { asc, desc } from "drizzle-orm";
-import { formatDateYYMMDDHHmmss } from "./utils/date";
+import { formatDateYYMMDDHHmm } from "./utils/date";
 // const DB_PATH = Bun.env.DB_FILE_PATH || './db.sqlite';
 const SALESFORCE_INSTANCE_URL = Bun.env.SALESFORCE_INSTANCE_URL;
 const ACCESS_TOKEN = Bun.env.ACCESS_TOKEN;
@@ -196,7 +196,7 @@ const app = new Elysia()
     }
     const dataFormatted = data.map((m) => ({
       ...m,
-      timestamp: formatDateYYMMDDHHmmss(m.timestamp as Date), // Ensure timestamp is formatted correctly
+      timestamp: formatDateYYMMDDHHmm(m.timestamp as Date), // Ensure timestamp is formatted correctly
     }))
     const dataIndexHeaders = dataFormatted[0];
     if (!dataIndexHeaders) {
@@ -231,7 +231,7 @@ const app = new Elysia()
     return {
       data: data.map((item) => ({
         id: item.id,
-        timestamp: formatDateYYMMDDHHmmss(item.timestamp),
+        timestamp: formatDateYYMMDDHHmm(item.timestamp),
         inUsePercent: item.inUsePercent,
       })),
     };
