@@ -243,6 +243,9 @@ const app = new Elysia()
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Salesforce Limits Chart</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.35.3/dist/apexcharts.css" />
+        <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
       </head>
       <body>
         <div id="chart-container">
@@ -255,15 +258,19 @@ const app = new Elysia()
 
           <div id="apexchart" style="max-width: 1400px;"></div>
         </div>
-
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
         <script safe>
+          // Initialize Day.js plugins
+          dayjs.extend(dayjs_plugin_utc);
+          dayjs.extend(dayjs_plugin_timezone);
+
           async function renderChart() {
             const res = await fetch('/chart-data-json');
                   const json = await res.json();
                   const jsonDataSort = json.data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                   inUsePercents = jsonDataSort.map(item => item.inUsePercent);
-                  timestamps = jsonDataSort.map(item => item.timestamp);
+
+                  timestamps = jsonDataSort.map(item => dayjs(item.timestamp, 'Asia/Bangkok').format('YYYY-MM-DD HH:mm'));
                   const options = {
                       chart: {
                         type: 'bar',
