@@ -111,7 +111,7 @@ const app = new Elysia()
   .use(
     cron({
       name: "fetch.salesforce.limits",
-      pattern: Patterns.EVERY_2ND_MONTH,
+      pattern: Patterns.EVERY_30_MINUTES,
       async run() {
         console.log("Cron job triggered: Fetching Salesforce limits...");
         if (checkRetryLimit()) {
