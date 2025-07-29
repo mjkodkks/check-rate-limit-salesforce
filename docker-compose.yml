@@ -1,7 +1,7 @@
 # File: docker-compose.yml
 version: '3.8'
 services:
-  check-salesforce-api-service:
+  api-service:
     build:
       context: .
       dockerfile: Dockerfile

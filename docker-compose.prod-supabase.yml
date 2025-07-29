@@ -1,11 +1,11 @@
 # File: docker-compose.yml
 services:
-  check-salesforce-api-service:
+  api-service:
     build:
       context: .
       dockerfile: ./Dockerfile.prod-supabase
     ports:
-      - "3000:3000"
+      - "4000:3000"
     environment:
       - NODE_ENV=production
     env_file:
