@@ -1,5 +1,7 @@
-import { format, getTime } from 'date-fns';
+import { TZDate } from "@date-fns/tz";
+import { format } from "date-fns";
 
-export function formatDateYYMMDDHHmmss(date: Date):  string | number {
-  return format(date, 'yyyy-MM-dd HH:mm');  
+export function formatDateYYMMDDHHmm(date: Date, timeZone = 'Asia/Bangkok'): string {
+  const zonedDate = new TZDate(date, timeZone);
+  return format(zonedDate, 'yyyy-MM-dd HH:mm');
 }
