@@ -5,11 +5,16 @@ import { cron, Patterns } from "@elysiajs/cron";
 import type { Limit, RateLimit, SalesforceLimits } from "./types";
 import { createDB } from "./drizzle/createDB";
 import { rateLimits } from "./drizzle/schema";
-import { asc, desc } from "drizzle-orm";
-import { formatDateYYMMDDHHmm } from "./utils/date";
+import { asc, desc, gte, eq, lte } from "drizzle-orm";
+import { formatDateYYMMDDHHmm, lastNDay } from "./utils/date";
 // const DB_PATH = Bun.env.DB_FILE_PATH || './db.sqlite';
 const SALESFORCE_INSTANCE_URL = Bun.env.SALESFORCE_INSTANCE_URL;
 const ACCESS_TOKEN = Bun.env.ACCESS_TOKEN;
+const DEBUG_MODE = Bun.env.DEBUG_MODE === "true" || false; // Default to false if not set
+
+if (DEBUG_MODE) {
+  console.log("Debug mode is enabled.");
+}
 
 if (!SALESFORCE_INSTANCE_URL || !ACCESS_TOKEN) {
   console.error(
@@ -128,7 +133,8 @@ const app = new Elysia()
             console.log(`Retrying... (${retry}/${MAXIMUM_RETRIES})`);
           }
         }
-      }, // Set to true to pause the cron job
+      },
+      paused: DEBUG_MODE // Set to true to pause the cron job
     })
   )
   .get("/data", async ({ set }) => {
@@ -215,14 +221,16 @@ const app = new Elysia()
 
     return csvContent;
   })
-  .get("/chart-data-json", async ({ set }) => {
+  .get("/chart-data-json", async ({ set, query }) => {
     console.log("Chart data JSON endpoint called");
+    const lastDay = query.lastDay ? parseInt(query.lastDay, 10) : 2; // Default to 2 days if not provided
+
     // drizzle query
     const data: RateLimit[] = await db
       .select()
       .from(rateLimits)
+      .where(gte(rateLimits.timestamp, lastNDay(new Date(), lastDay)))
       .orderBy(desc(rateLimits.timestamp))
-      .limit(144);
     if (data.length === 0 || data === undefined) {
       set.status = 404;
       return { error: "No data available for chart." };
@@ -235,26 +243,47 @@ const app = new Elysia()
         inUsePercent: item.inUsePercent,
       })),
     };
+  }, {
+    query: t.Optional(
+      t.Object({
+        lastDay: t.String()
+      })
+    )
   })
   .get("/chart", () => (`
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Salesforce Limits Chart</title>
+        <title>Monitor Salesforce - Daily Durable Streaming Api Events</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.35.3/dist/apexcharts.css" />
         <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
+        <style>
+          body {
+              font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+          }
+        </style>
       </head>
       <body>
+        <h1>Monitor Salesforce - Daily Durable Streaming Api Events</h1>
         <div id="chart-container">
           <button
-            onclick="renderChart()"
+            id="reloadButton"
             style="margin-bottom: 1rem;"
           >
-            Refresh Chart
+           🔄 Reload
           </button>
+          <select name="data_previous" id="dataPreviousSelect">
+            <option value="1">Last 1 Days</option>
+            <option value="2" selected>Last 2 Days</option>
+            <option value="3">Last 3 Days</option>
+            <option value="4">Last 4 Days</option>
+            <option value="5">Last 5 Days</option>
+            <option value="6">Last 6 Days</option>
+            <option value="7">Last 7 Days</option>
+          </select>
 
           <div id="apexchart" style="max-width: 1400px;"></div>
         </div>
@@ -264,8 +293,22 @@ const app = new Elysia()
           dayjs.extend(dayjs_plugin_utc);
           dayjs.extend(dayjs_plugin_timezone);
 
-          async function renderChart() {
-            const res = await fetch('/chart-data-json');
+          let chart = null;
+          let selectedLastDay = 2; // Default to 2 days
+
+          async function renderChart(renderOptions = {}) {
+            const { lastDay } = renderOptions;
+            let params = new URLSearchParams();
+            let paramsString = '';
+            if (lastDay) {
+              params = new URLSearchParams({ lastDay });
+              paramsString = '?' + params.toString();
+            }
+            if (chart) {
+              chart.destroy(); // Destroy the previous chart instance if it exists
+            }
+            console.log("Fetching chart data with params:", paramsString);
+                  const res = await fetch('/chart-data-json' + paramsString);
                   const json = await res.json();
                   const jsonDataSort = json.data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                   inUsePercents = jsonDataSort.map(item => item.inUsePercent);
@@ -307,10 +350,34 @@ const app = new Elysia()
                 };
             console.log("Chart inUsePercents:", inUsePercents);
             console.log("Chart timestamps:", timestamps);
-            const chart = new ApexCharts(document.querySelector("#apexchart"), options);
+            chart = new ApexCharts(document.querySelector("#apexchart"), options);
             chart.render();
           }
 
+          
+          function onChangeLastDay(event) {
+            const selectedValue = parseInt(event.target.value, 10);
+            selectedLastDay = selectedValue; // Update the selected last day value
+            console.log("Selected value:", selectedValue);
+            if (selectedValue < 1 || selectedValue > 7) {
+              console.error("Invalid selection. Please select a value between 1 and 7.");
+              return;
+            }
+            // Update the chart with the new data
+            renderChart({ lastDay: selectedValue });
+          }
+
+          function onReload() {
+            renderChart({ lastDay: selectedLastDay });
+            const dataPreviousSelect = document.getElementById('dataPreviousSelect')
+            if (dataPreviousSelect) {
+              dataPreviousSelect.value = selectedLastDay.toString(); // Update the select element to match the current last day
+            }
+          }
+
+          document.getElementById('dataPreviousSelect').addEventListener('change', onChangeLastDay);
+          document.getElementById('reloadButton').addEventListener('click', onReload)
+          
           renderChart();
         </script>
       </body>
